@@ -11,16 +11,31 @@ export async function POST(req) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4-turbo",
-        messages: [{ role: "system", content: `Tu es un expert en création de scripts vidéo YouTube.` },
-                   { role: "user", content: `Génère un script vidéo optimisé pour YouTube sur le sujet suivant : ${topic}` }],
-        max_tokens: 300,
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "Tu es un expert en création de scripts optimisés pour YouTube et TikTok. Génère un script complet et structuré, accrocheur et prêt à tourner.",
+          },
+          {
+            role: "user",
+            content: `Écris un script vidéo optimisé pour YouTube et TikTok sur le sujet suivant : ${topic}`,
+          },
+        ],
+        max_tokens: 400,
       }),
     });
 
     const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Erreur OpenAI:", data);
+      return NextResponse.json({ error: "Erreur API OpenAI", details: data }, { status: 500 });
+    }
+
     return NextResponse.json({ script: data.choices[0].message.content });
   } catch (error) {
-    return NextResponse.json({ error: "Erreur lors de la génération du script" }, { status: 500 });
+    console.error("Erreur serveur:", error);
+    return NextResponse.json({ error: "Erreur serveur", details: error.message }, { status: 500 });
   }
 }
