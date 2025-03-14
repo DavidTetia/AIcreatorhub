@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Initialisation du client Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -8,35 +8,37 @@ const supabase = createClient(
 
 export async function POST(req) {
   try {
+    // Extraction des données envoyées par le client
     const { topic } = await req.json();
-    if (!topic) return NextResponse.json({ error: "Topic manquant." }, { status: 400 });
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: "Génère un script vidéo." }, { role: "user", content: topic }],
-        max_tokens: 200,
-      }),
-    });
+    // Vérification des données reçues
+    if (!topic || topic.trim() === "") {
+      console.error("Erreur: Aucun topic reçu !");
+      return new Response(JSON.stringify({ error: "Le champ 'topic' est requis." }), { status: 400 });
+    }
 
-    const openaiData = await openaiResponse.json();
-    if (!openaiData.choices) throw new Error("Erreur OpenAI : " + JSON.stringify(openaiData));
+    // DEBUG: Vérifier le contenu du topic
+    console.log("DEBUG: Topic reçu =>", topic);
 
-    const script = openaiData.choices[0]?.message?.content || "Erreur lors de la génération.";
-
+    // Insertion dans la base de données Supabase
     const { data, error } = await supabase
       .from("scripts")
-      .insert([{ title: topic, content: script }]);
+      .insert([{ title: topic, content: "Script généré automatiquement." }]);
 
-    if (error) throw new Error("Erreur Supabase : " + error.message);
+    // Gestion des erreurs Supabase
+    if (error) {
+      console.error("Erreur Supabase:", error);
+      return new Response(JSON.stringify({ error: "Erreur Supabase : " + error.message }), { status: 500 });
+    }
 
-    return NextResponse.json({ script });
+    // DEBUG: Vérifier la réponse de l'insertion
+    console.log("DEBUG: Données insérées =>", data);
+
+    // Retourner la réponse en JSON
+    return new Response(JSON.stringify({ success: true, script: data }), { status: 200 });
+
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Erreur serveur:", error);
+    return new Response(JSON.stringify({ error: "Erreur interne du serveur." }), { status: 500 });
   }
 }
