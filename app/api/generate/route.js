@@ -9,8 +9,10 @@ const supabase = createClient(
 export async function POST(req) {
   try {
     const { topic } = await req.json();
+    if (!topic) return NextResponse.json({ error: "Topic manquant." }, { status: 400 });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Génération du script avec OpenAI
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -18,28 +20,23 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Tu es un expert en création de scripts vidéo YouTube et TikTok." },
-          { role: "user", content: `Écris un script vidéo optimisé sur : ${topic}` },
-        ],
-        max_tokens: 400,
+        messages: [{ role: "system", content: "Génère un script vidéo." }, { role: "user", content: topic }],
+        max_tokens: 200,
       }),
     });
 
-    const data = await response.json();
-    const scriptContent = data.choices[0].message.content;
+    const openaiData = await openaiResponse.json();
+    const script = openaiData.choices[0]?.message?.content || "Erreur lors de la génération.";
 
-    // 📝 Sauvegarde dans Supabase
-    const { error } = await supabase.from("scripts").insert([{ topic, content: scriptContent }]);
+    // Sauvegarde dans Supabase
+    const { data, error } = await supabase
+      .from("scripts")
+      .insert([{ title: topic, content: script }]);
 
-    if (error) {
-      console.error("Erreur Supabase :", error);
-      return NextResponse.json({ error: "Erreur lors de l'enregistrement du script" }, { status: 500 });
-    }
+    if (error) throw error;
 
-    return NextResponse.json({ script: scriptContent });
+    return NextResponse.json({ script });
   } catch (error) {
-    console.error("Erreur serveur :", error);
-    return NextResponse.json({ error: "Erreur serveur", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
