@@ -11,7 +11,6 @@ export async function POST(req) {
     const { topic } = await req.json();
     if (!topic) return NextResponse.json({ error: "Topic manquant." }, { status: 400 });
 
-    // Génération du script avec OpenAI
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -26,14 +25,15 @@ export async function POST(req) {
     });
 
     const openaiData = await openaiResponse.json();
+    if (!openaiData.choices) throw new Error("Erreur OpenAI : " + JSON.stringify(openaiData));
+
     const script = openaiData.choices[0]?.message?.content || "Erreur lors de la génération.";
 
-    // Sauvegarde dans Supabase
     const { data, error } = await supabase
       .from("scripts")
       .insert([{ title: topic, content: script }]);
 
-    if (error) throw error;
+    if (error) throw new Error("Erreur Supabase : " + error.message);
 
     return NextResponse.json({ script });
   } catch (error) {
