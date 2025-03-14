@@ -24,12 +24,12 @@ export async function POST(req) {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Tu es un assistant pour la création de scripts vidéo." },
           { role: "user", content: `Génère un script vidéo pour le sujet suivant : ${topic}` }
         ],
-        max_tokens: 300
+        max_tokens: 150
       })
     });
 
